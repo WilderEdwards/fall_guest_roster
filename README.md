@@ -100,17 +100,17 @@ just the count) before and after T1.
 
 | Test | Action/input | Expected | Observed IDs/values/counts | Pass/fail |
 | --- | --- | --- | --- | --- |
-| T1a upgrade | Open v1 install with new helper; record PRAGMAs + Part I rows | Part I IDs/values kept, new tables + index exist | user_version=[ ], fk=[ ], Part I before=[ ] after=[ ] | [ ] |
-| T1b fresh | Launch v2 on separate disposable target | All tables created; empty folder opens clean | target=[ ] | [ ] |
-| T2 create | Create Atlas + Harbor; add Compass x2 in Atlas, Signal (image NULL) in Harbor | 3 distinct card IDs; Atlas 2, Harbor 1 | Atlas ID=[ ], Harbor ID=[ ], card IDs=[ ] | [ ] |
-| T3 edit | Edit one Compass by ID → Compass revised + notes, Save; edit other, Cancel | Save = 1 row, only chosen card changes; Cancel writes nothing | edited ID=[ ], affected=[ ] | [ ] |
-| T4 restart | Record IDs/counts, Force-stop (no Clear), relaunch same install | Same folders/IDs/counts, no reseed | before=[ ] after=[ ] | [ ] |
-| T5 delete | Cancel card delete, confirm it; Cancel folder delete, confirm Atlas delete | Cancels change nothing; card delete = 1; folder delete = 1 parent + its cards, Harbor kept | deleted card=[ ], deleted folder=[ ] | [ ] |
-| T6 validation | Open Signal (NULL image) → fallback; try whitespace title, blank folder, duplicate Harbor | Fallback shows; all invalid give feedback, counts unchanged | counts=[ ] | [ ] |
+| T1a upgrade | Open v1 install with new helper; record PRAGMAs + Part I rows | Part I IDs/values kept, new tables + index exist | Part I before=[fill] after=[fill]; user_version=[fill], fk=[fill] | [ ] |
+| T1b fresh | Launch v2 on separate disposable target | All tables created; empty folder opens clean | target=[fill] | [ ] |
+| T2 create | Create Atlas + Harbor; add Compass x2 in Atlas, Signal (image NULL) in Harbor | 3 distinct card IDs; Atlas 2, Harbor 1 | Atlas ID=1, Harbor ID=2; Signal ID=1 (Harbor), Compass revised ID=2 + Compass ID=3 (Atlas); Atlas 2, Harbor 1 — see `evidence/T2_cards.png` | Pass |
+| T3 edit | Edit one Compass by ID → Compass revised + notes, Save; edit other, Cancel | Save = 1 row, only chosen card changes; Cancel writes nothing | Edited ID=2 → "Compass revised" (Diamonds, "Notes for T3"), 1 row affected; ID=3 "Compass" (Clubs, no notes) unchanged; Cancel step not shown in screenshots | Pass (Save part; Cancel still needs a witnessed run) |
+| T4 restart | Record IDs/counts, Force-stop (no Clear), relaunch same install | Same folders/IDs/counts, no reseed | before=[fill] after=[fill] — no post-restart screenshot yet | [ ] |
+| T5 delete | Cancel card delete, confirm it; Cancel folder delete, confirm Atlas delete | Cancels change nothing; card delete = 1; folder delete = 1 parent + its cards, Harbor kept | deleted card=[fill], deleted folder=[fill] — not shown in screenshots | [ ] |
+| T6 validation | Open Signal (NULL image) → fallback; try whitespace title, blank folder, duplicate Harbor | Fallback shows; all invalid give feedback, counts unchanged | Signal ID=1 shows heart fallback with "no notes" — see `evidence/T6_fallback.png`; invalid-input attempts not shown in screenshots | Partial (fallback shown; validation attempts still need recording) |
 
 T4 method: [fill exact — Android: stop debug → App info → Force stop → relaunch / iOS: stop → app-switcher kill → `flutter run -d <id>` + target]
 Release smoke test: [build cmd/result, install target, create/read/edit/delete + fallback + restart — observed]
-Evidence: `evidence/T1_before.png` (before upgrade!), `evidence/T2_cards.png`, `evidence/T4_after.png`, `evidence/analysis_output.txt`
+Evidence: `evidence/T2_cards.png` (Atlas: Compass ID=3 + Compass revised ID=2), `evidence/T6_fallback.png` (Harbor: Signal ID=1 with suit fallback), `evidence/analysis_output.txt`. Still missing: `evidence/T1_before.png` (must be captured before upgrade — cannot reuse a later screenshot) and `evidence/T4_after.png` (post-restart).
 
 Rubric map: schema + preservation → `database_helper.dart` + T1 rows; models/repo +
 CRUD → models + helper + T2–T5; image + usability → fallback + T6; tests +
@@ -120,7 +120,7 @@ Analyzer: `dart analyze lib` → No issues found (see `evidence/analysis_output.
 Note: plain `flutter analyze` needs Windows Developer Mode for plugin symlinks,
 so the recorded run uses `dart analyze lib`.
 
-Known limitations: [fill, e.g. none / URL images need network]
+Known limitations: T1/T4/T5 and the invalid-input half of T6 are not yet evidenced — see blanks above. Screenshots also caught a UI text bug ("Updated card ID null (1 row)" — the row count was right but the ID printed null because the form was cleared before reading it); fixed in `catalogue_screen.dart` after the screenshots, needs one re-test to confirm the message now shows ID 2.
 
 ## Submission files (each student uploads all three to iCollege)
 

@@ -316,12 +316,12 @@ class _CatalogueScreenState extends State<CatalogueScreen> {
           await _loadFolders();
           return;
         }
+        final int editedId = _editingCardId!;
         _clearCardForm();
         if (!mounted) return;
         setState(() {
-          _feedback = 'Updated card ID $_editingCardId (1 row).';
+          _feedback = 'Updated card ID $editedId (1 row).';
         });
-        _clearCardForm();
         await _loadFolders();
       } else {
         final id = await widget.helper.insertCard(
