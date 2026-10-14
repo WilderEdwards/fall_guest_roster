@@ -26,7 +26,7 @@ class CardRecord {
       title: (map['title'] ?? '').toString(),
       suit: (map['suit'] ?? '').toString(),
       notes: (map['notes'] ?? '').toString(),
-      imageRef: rawImage == null ? null : rawImage.toString(),
+      imageRef: rawImage?.toString(),
       folderId: (map['folder_id'] as int?) ?? 0,
     );
   }

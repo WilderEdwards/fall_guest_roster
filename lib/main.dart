@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'catalogue_screen.dart';
 import 'database_helper.dart';
 
 Future<void> main() async {
@@ -32,7 +33,49 @@ class DirectoryApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Fall Festival Roster',
-      home: RosterScreen(helper: helper),
+      home: HomeShell(helper: helper),
+    );
+  }
+}
+
+class HomeShell extends StatefulWidget {
+  final DatabaseHelper helper;
+
+  const HomeShell({super.key, required this.helper});
+
+  @override
+  State<HomeShell> createState() => _HomeShellState();
+}
+
+class _HomeShellState extends State<HomeShell> {
+  int _index = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final pages = [
+      RosterScreen(helper: widget.helper),
+      CatalogueScreen(helper: widget.helper),
+    ];
+    return Scaffold(
+      body: pages[_index],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _index,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.people),
+            label: 'Guests',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.folder),
+            label: 'Folders',
+          ),
+        ],
+        onTap: (value) {
+          setState(() {
+            _index = value;
+          });
+        },
+      ),
     );
   }
 }
@@ -98,10 +141,11 @@ class _RosterScreenState extends State<RosterScreen> {
             'Could not read the roster. Check the logs and try Refresh.';
       });
     } finally {
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -190,10 +234,11 @@ class _RosterScreenState extends State<RosterScreen> {
         _feedback = 'Save failed. Check the logs and try again.';
       });
     } finally {
-      if (!mounted) return;
-      setState(() {
-        _busy = false;
-      });
+      if (mounted) {
+        setState(() {
+          _busy = false;
+        });
+      }
     }
   }
 
@@ -317,10 +362,11 @@ class _RosterScreenState extends State<RosterScreen> {
         _feedback = 'Delete failed. Check the logs and try again.';
       });
     } finally {
-      if (!mounted) return;
-      setState(() {
-        _busy = false;
-      });
+      if (mounted) {
+        setState(() {
+          _busy = false;
+        });
+      }
     }
   }
 
