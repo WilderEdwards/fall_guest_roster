@@ -111,6 +111,29 @@ class _CatalogueScreenState extends State<CatalogueScreen> {
     }
   }
 
+  // Read-only diagnostics for T1. Shows values on screen and in logs.
+  Future<void> _showDiagnostics() async {
+    if (_isBusy) return;
+    try {
+      final v = await widget.helper.getUserVersion();
+      final fk = await widget.helper.getForeignKeysOn();
+      final fkl = await widget.helper.getCardForeignKeys();
+      final idx = await widget.helper.getCardIndexes();
+      final guests = await widget.helper.queryAllRows();
+      debugPrint('DIAG user_version=$v foreign_keys=$fk fkl=$fkl idx=$idx guests=$guests');
+      if (!mounted) return;
+      setState(() {
+        _feedback = 'DIAG v=$v fk=$fk guests=${guests.length} — full fkl/idx in logs.';
+      });
+    } catch (error, stackTrace) {
+      debugPrint('Diagnostics failed: $error\n$stackTrace');
+      if (!mounted) return;
+      setState(() {
+        _feedback = 'Diagnostics failed. Check the logs.';
+      });
+    }
+  }
+
   Future<void> _openFolder(int folderId) async {
     if (_isBusy) return;
     if (!mounted) return;
@@ -504,7 +527,16 @@ class _CatalogueScreenState extends State<CatalogueScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Card Catalogue')),
+      appBar: AppBar(
+        title: const Text('Card Catalogue'),
+        actions: [
+          IconButton(
+            tooltip: 'Diagnostics',
+            icon: const Icon(Icons.info),
+            onPressed: _isBusy ? null : _showDiagnostics,
+          ),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: _loading && _folders.isEmpty
