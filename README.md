@@ -1,20 +1,12 @@
 # In-Class 09 / Fall Festival Roster + Card Catalogue (Part II builds on Part I)
 
-Student / course / pathway: [LastName, FirstName] / [Course + Section] / Undergraduate
-Flutter / Dart versions: [fill in from `flutter --version`]
-Device / OS: [e.g. Pixel 7 API 34 emulator / Android 14]
+Student / course / pathway: Edwards, Wilder / Mobile App Dev Mon/Wed Section / Undergraduate
+Flutter / Dart versions: 18:35:09.000Z | Tools • Dart 3.13.4 • DevTools 2.60.0
+Device / OS: Android Medium Phone 2 // Fedora Linux // Windows 11
 
 This app keeps my Part I guest roster and adds a folder/card catalogue in the
 same database. The Guests tab is Part I. The Folders tab is new.
 
-Setup/run:
-
-```sh
-flutter pub get
-flutter run
-```
-
-Do a full restart (not hot reload) after adding plugins like `sqflite`.
 
 ## Storage notes
 
@@ -62,7 +54,7 @@ Do a full restart (not hot reload) after adding plugins like `sqflite`.
 
 | Test | Action/input | Expected | Observed | Pass/fail |
 | --- | --- | --- | --- | --- |
-| T1a upgrade | Open v1 install with new code; check PRAGMAs + guest rows | Guest IDs/values kept, new tables exist | Before: River 1/21, River 2/35, count 2 (`T1_before.png`); after: same 2 Rivers (`T4_after.png`); PRAGMAs=[fill] | Partial |
+| T1a upgrade | Open v1 install with new code; check PRAGMAs + guest rows | Guest IDs/values kept, new tables exist | Before: River 1/21, River 2/35, count 2 (`T1_before.png`); after: same 2 Rivers (`T4_after.png`); DIAG: user_version=2, foreign_keys=1, fkl=CASCADE folders(id), idx=idx_cards_folder_id | Pass |
 | T1b fresh | Fresh v2 on separate target | All tables built, empty folder opens | target=[fill] | [ ] |
 | T2 create | Add Atlas + Harbor; add Compass x2 in Atlas, Signal (no image) in Harbor | 3 card IDs; Atlas 2, Harbor 1 | Atlas=1, Harbor=2; Signal=1, Compass revised=2, Compass=3 (`T2_cards.png`) | Pass |
 | T3 edit | Edit one Compass to revised + notes, Save; edit other, Cancel | Save = 1 row, only that card changes; Cancel writes nothing | ID 2 → revised (Diamonds, Notes for T3), 1 row; ID 3 unchanged; Cancel not in shots | Pass (Save part) |
@@ -78,7 +70,7 @@ Rubric map: schema → `database_helper.dart` + T1; models/CRUD → models + hel
 
 Analyzer: `dart analyze lib` → No issues found (`evidence/analysis_output.txt`). Plain `flutter analyze` needs Windows Developer Mode, so `dart analyze` is recorded.
 
-Known limitations: T1 PRAGMAs, T1b, T5, T6 invalid attempts, and Folders-after-restart shot are still open. Fixed after shots: "Updated card ID null" now shows the real id — needs one re-test.
+Known limitations: T1b, T5, T6 invalid attempts, and Folders-after-restart shot are still open. Fixed after shots: "Updated card ID null" now shows the real id — needs one re-test.
 
 ## Submission (upload all three to iCollege)
 
