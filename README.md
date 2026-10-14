@@ -1,4 +1,4 @@
-# In-Class 08 / Fall Festival Roster
+# In-Class 09 / Fall Festival Roster + Card Catalogue (Part II builds on Part I)
 
 Student / course / pathway: [LastName, FirstName] / [Course + Section 2] / Undergraduate
 Flutter / Dart versions: [e.g. Flutter 3.x.x / Dart 3.6.x — fill in from `flutter --version`]
@@ -104,6 +104,65 @@ Known limitations: none found
    1 (B only), while Acorn 0 (ID 3) and Oak 130 (ID 4) were accepted for a
    final count of 3 (`evidence/T6_invalid.png`). No functional bug was found;
    limitation: none beyond the single-table, single-user local scope.
+
+## Part II (ISCO9) — folders + cards
+
+- DB: `MyDatabase.db` version 2. `onConfigure` runs
+  `PRAGMA foreign_keys = ON`. `onCreate` builds Part I + catalogue tables;
+  `onUpgrade` runs `createCatalogueTables()` only when `oldVersion < 2`,
+  so Part I rows survive.
+- New schema (from assignment SQL): `folders(id PK AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE, created_at TEXT NOT NULL)`,
+  `cards(id PK AUTOINCREMENT, title TEXT NOT NULL, suit TEXT NOT NULL,
+  notes TEXT NOT NULL DEFAULT '', image_ref TEXT, folder_id INTEGER NOT NULL,
+  FOREIGN KEY(folder_id) REFERENCES folders(id) ON DELETE CASCADE)`,
+  plus `CREATE INDEX idx_cards_folder_id ON cards(folder_id)`.
+- `created_at` is an ISO-8601 string from `DateTime.now().toIso8601String()`.
+  Notes default to `''`, missing image is SQL `NULL` and shows a suit symbol
+  (Hearts ♥, Diamonds ♦, Clubs ♣, Spades ♠).
+- Models: `lib/folder.dart` (`Folder.fromMap/toMap`), `lib/card_record.dart`
+  (`CardRecord.fromMap/toMap` — avoids clashing with Material `Card`).
+- Repository in `lib/database_helper.dart`: `insertFolder()`,
+  `getFoldersWithCounts()` (LEFT JOIN + `COUNT(cards.id)`, keeps empty folders
+  at 0), `getCards(folderId)` (`where: folder_id = ?`, `whereArgs`,
+  `orderBy: title COLLATE NOCASE ASC`), `insertCard()`, `updateCard()`,
+  `deleteCard(id)`, `deleteFolder(id)` (cascade), plus read-only diagnostics
+  (`PRAGMA user_version`, `foreign_keys`, `foreign_key_list(cards)`,
+  `index_list(cards)`) for T1.
+- UI in `lib/catalogue_screen.dart`, reached from the bottom tab `Folders`
+  (Guests tab keeps the Part I `RosterScreen`). Covers: folder list with
+  counts, tap-to-open by ID, Add/Edit card form reused, delete confirms naming
+  the folder/card, empty/loading/error states, busy guard, `mounted` checks,
+  input preserved on failed writes. Duplicate folder names are rejected with
+  visible feedback (no `ConflictAlgorithm.replace` — replace could wipe cards).
+- Image choice: nullable `image_ref`. Empty/null shows the suit fallback.
+  `http(s)` URLs use `Image.network` with loading/error fallback; anything
+  else tries `Image.asset` with error fallback. No gallery picker (optional).
+- Delete rule: `ON DELETE CASCADE` because a folder owns its cards (lab
+  definition). Alternative for clinic/billing records would be RESTRICT or
+  archive — see reflection prompt 2.
+- Analyzer: `dart analyze lib` → No issues found
+  (saved in `evidence/analysis_output.txt`; `flutter analyze` needs Windows
+  Developer Mode for plugin symlinks, so `dart analyze` is the recorded run).
+- Release: `flutter build apk --release` → `Activity09_Lastname_Firstname.apk`
+  (you run + smoke-test this yourself — see steps below).
+
+### T1–T6 matrix (FILL with your real IDs/counts after running)
+
+| Test | Action/input | Expected | Observed IDs/values/counts | Pass/fail |
+| --- | --- | --- | --- | --- |
+| T1a upgrade | Open v1 install with new helper; record `PRAGMA user_version`, `foreign_keys`, `foreign_key_list(cards)`, `index_list(cards)`, Part I rows | Part I IDs/values kept, new tables+index exist | user_version=[ ], fk=[ ], Part I count before=[ ] after=[ ] | [ ] |
+| T1b fresh | Launch v2 on separate disposable target | Part I + catalogue tables created; empty folder opens clean | target=[ ] | [ ] |
+| T2 create | Create Atlas + Harbor; add Compass x2 in Atlas, Signal (image NULL) in Harbor | 3 distinct card IDs; Atlas 2, Harbor 1 | Atlas ID=[ ], Harbor ID=[ ], card IDs=[ ] | [ ] |
+| T3 edit | Edit one Compass by ID → Compass revised + notes, Save; edit other, Cancel | Save=1 row, only chosen card changes; Cancel writes nothing; counts 2/1 | edited ID=[ ], affected=[ ] | [ ] |
+| T4 restart | Record IDs/counts, Force-stop (no Clear), relaunch same install | Same folders/IDs/values/counts, no reseed | before=[ ] after=[ ] | [ ] |
+| T5 delete | Cancel card delete, confirm it; Cancel folder delete, confirm Atlas delete | Cancels change nothing; card delete=1 Atlas→1; folder delete=1 parent, Atlas cards gone, Harbor/Signal kept | deleted card ID=[ ], deleted folder ID=[ ] | [ ] |
+| T6 validation | Open Signal (NULL image) → fallback; try whitespace title, blank folder, duplicate Harbor | Fallback shows; all invalid give feedback, counts unchanged | counts=[ ] | [ ] |
+
+T4 method (FILL exact): [Android: stop debug → App info → Force stop → relaunch / iOS: stop → app-switcher kill → `flutter run -d <id>` + target]
+Release smoke test (FILL): build cmd/result, install target, create/read/edit/delete + fallback + restart — observed [ ].
+Evidence files: `evidence/T1_before.png` (before upgrade!), `evidence/T2_cards.png`, `evidence/T4_after.png`, `evidence/analysis_output.txt`.
+Known limitations: [FILL, e.g. none / URL images need network].
 
 ## Attribution
 

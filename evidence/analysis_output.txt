@@ -1,7 +1,2 @@
-Analyzing fall_guest_roster...                                  
-
-   info • Use of 'return' in a 'finally' clause. Try restructuring the code • lib/main.dart:101:21 • control_flow_in_finally
-   info • Use of 'return' in a 'finally' clause. Try restructuring the code • lib/main.dart:193:21 • control_flow_in_finally
-   info • Use of 'return' in a 'finally' clause. Try restructuring the code • lib/main.dart:320:21 • control_flow_in_finally
-
-3 issues found. (ran in 1.5s)
+﻿Analyzing lib...
+No issues found!
