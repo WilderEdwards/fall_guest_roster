@@ -100,7 +100,7 @@ just the count) before and after T1.
 
 | Test | Action/input | Expected | Observed IDs/values/counts | Pass/fail |
 | --- | --- | --- | --- | --- |
-| T1a upgrade | Open v1 install with new helper; record PRAGMAs + Part I rows | Part I IDs/values kept, new tables + index exist | Part I before=[fill] after=[fill]; user_version=[fill], fk=[fill] | [ ] |
+| T1a upgrade | Open v1 install with new helper; record PRAGMAs + Part I rows | Part I IDs/values kept, new tables + index exist | Part I before: River ID=1 Age 21, River ID=2 Age 35, count 2 — see `evidence/T1_before.png`; after + PRAGMAs=[fill] | Partial |
 | T1b fresh | Launch v2 on separate disposable target | All tables created; empty folder opens clean | target=[fill] | [ ] |
 | T2 create | Create Atlas + Harbor; add Compass x2 in Atlas, Signal (image NULL) in Harbor | 3 distinct card IDs; Atlas 2, Harbor 1 | Atlas ID=1, Harbor ID=2; Signal ID=1 (Harbor), Compass revised ID=2 + Compass ID=3 (Atlas); Atlas 2, Harbor 1 — see `evidence/T2_cards.png` | Pass |
 | T3 edit | Edit one Compass by ID → Compass revised + notes, Save; edit other, Cancel | Save = 1 row, only chosen card changes; Cancel writes nothing | Edited ID=2 → "Compass revised" (Diamonds, "Notes for T3"), 1 row affected; ID=3 "Compass" (Clubs, no notes) unchanged; Cancel step not shown in screenshots | Pass (Save part; Cancel still needs a witnessed run) |
@@ -110,7 +110,7 @@ just the count) before and after T1.
 
 T4 method: [fill exact — Android: stop debug → App info → Force stop → relaunch / iOS: stop → app-switcher kill → `flutter run -d <id>` + target]
 Release smoke test: [build cmd/result, install target, create/read/edit/delete + fallback + restart — observed]
-Evidence: `evidence/T2_cards.png` (Atlas: Compass ID=3 + Compass revised ID=2), `evidence/T6_fallback.png` (Harbor: Signal ID=1 with suit fallback), `evidence/analysis_output.txt`. Still missing: `evidence/T1_before.png` (must be captured before upgrade — cannot reuse a later screenshot) and `evidence/T4_after.png` (post-restart).
+Evidence: `evidence/T1_before.png` (Part I: River 1/21, River 2/35), `evidence/T2_cards.png` (Atlas: Compass ID=3 + Compass revised ID=2), `evidence/T6_fallback.png` (Harbor: Signal ID=1 with suit fallback), `evidence/analysis_output.txt`. Still missing: `evidence/T4_after.png` (post-restart) — take it right after your Force-stop relaunch.
 
 Rubric map: schema + preservation → `database_helper.dart` + T1 rows; models/repo +
 CRUD → models + helper + T2–T5; image + usability → fallback + T6; tests +
