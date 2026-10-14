@@ -1,122 +1,442 @@
 import 'package:flutter/material.dart';
 
-void main() {
-  runApp(const MyApp());
+import 'database_helper.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final helper = DatabaseHelper();
+  try {
+    await helper.init();
+  } catch (error, stackTrace) {
+    debugPrint('Database initialization failed: $error\n$stackTrace');
+    runApp(const MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: Text(
+            'Could not open local storage. Restart the app and check the logs.',
+          ),
+        ),
+      ),
+    ));
+    return;
+  }
+  runApp(DirectoryApp(helper: helper));
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class DirectoryApp extends StatelessWidget {
+  final DatabaseHelper helper;
 
-  // This widget is the root of your application.
+  const DirectoryApp({super.key, required this.helper});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      title: 'Fall Festival Roster',
+      home: RosterScreen(helper: helper),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+class RosterScreen extends StatefulWidget {
+  final DatabaseHelper helper;
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+  const RosterScreen({super.key, required this.helper});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<RosterScreen> createState() => _RosterScreenState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _RosterScreenState extends State<RosterScreen> {
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _ageController = TextEditingController();
 
-  void _incrementCounter() {
+  List<Map<String, dynamic>> _rows = [];
+  int _count = 0;
+  bool _loading = true;
+  bool _busy = false;
+  String? _readError;
+  String? _feedback;
+  String? _nameError;
+  String? _ageError;
+  int? _editingId;
+
+  bool get _isBusy => _busy || _loading;
+  bool get _isEditing => _editingId != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRows();
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _ageController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadRows() async {
+    if (!mounted) return;
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+      _loading = true;
+      _readError = null;
     });
+    try {
+      final rows = await widget.helper.queryAllRows();
+      final count = await widget.helper.queryRowCount();
+      if (!mounted) return;
+      setState(() {
+        _rows = rows;
+        _count = count;
+      });
+    } catch (error, stackTrace) {
+      debugPrint('Read failed: $error\n$stackTrace');
+      if (!mounted) return;
+      setState(() {
+        _readError =
+            'Could not read the roster. Check the logs and try Refresh.';
+      });
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+      });
+    }
+  }
+
+  /// Validates the form. Returns null when invalid (and sets field errors).
+  /// Invalid input must never reach the database.
+  ({String name, int age})? _validate() {
+    final name = _nameController.text.trim();
+    final ageText = _ageController.text.trim();
+
+    String? nameError;
+    String? ageError;
+
+    if (name.isEmpty) {
+      nameError = 'Enter a non-empty name.';
+    }
+
+    final age = int.tryParse(ageText);
+    if (age == null) {
+      ageError = 'Enter a whole number from 0 to 130.';
+    } else if (age < 0 || age > 130) {
+      ageError = 'Age must be 0–130 inclusive.';
+    }
+
+    if (!mounted) return null;
+    setState(() {
+      _nameError = nameError;
+      _ageError = ageError;
+    });
+
+    if (nameError != null || ageError != null) return null;
+    return (name: name, age: age!);
+  }
+
+  Future<void> _onSave() async {
+    if (_isBusy) return;
+    final valid = _validate();
+    if (valid == null) {
+      if (mounted) {
+        setState(() {
+          _feedback = 'Fix the highlighted fields; nothing was saved.';
+        });
+      }
+      return;
+    }
+    if (!mounted) return;
+    setState(() {
+      _busy = true;
+      _feedback = null;
+    });
+    try {
+      if (_isEditing) {
+        final updated = await widget.helper.update({
+          DatabaseHelper.columnId: _editingId,
+          DatabaseHelper.columnName: valid.name,
+          DatabaseHelper.columnAge: valid.age,
+        });
+        if (updated == 0) {
+          if (!mounted) return;
+          setState(() {
+            _feedback =
+                'That record no longer exists (0 rows updated). Reloading.';
+          });
+          await _reloadAfterWrite(
+              successMessage: null, notFound: true);
+          return;
+        }
+        await _reloadAfterWrite(
+          successMessage: 'Updated ID $_editingId (1 row).',
+          clearForm: true,
+        );
+      } else {
+        final id = await widget.helper.insert({
+          DatabaseHelper.columnName: valid.name,
+          DatabaseHelper.columnAge: valid.age,
+        });
+        await _reloadAfterWrite(
+          successMessage: 'Added ${valid.name} with ID $id.',
+          clearForm: true,
+        );
+      }
+    } catch (error, stackTrace) {
+      debugPrint('Write failed: $error\n$stackTrace');
+      if (!mounted) return;
+      setState(() {
+        // Preserve user input on a failed write.
+        _feedback = 'Save failed. Check the logs and try again.';
+      });
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+      });
+    }
+  }
+
+  /// Re-queries after a successful write. Never repeats the write itself.
+  Future<void> _reloadAfterWrite(
+      {String? successMessage,
+      bool clearForm = false,
+      bool notFound = false}) async {
+    try {
+      final rows = await widget.helper.queryAllRows();
+      final count = await widget.helper.queryRowCount();
+      if (!mounted) return;
+      setState(() {
+        _rows = rows;
+        _count = count;
+        _readError = null;
+        if (successMessage != null) _feedback = successMessage;
+        if (clearForm) _clearForm();
+      });
+    } catch (error, stackTrace) {
+      debugPrint('Refresh after write failed: $error\n$stackTrace');
+      if (!mounted) return;
+      setState(() {
+        _feedback = notFound
+            ? 'Record not found. Saved state is unclear — press Refresh.'
+            : 'Saved, but refresh failed. Press Refresh to reload.';
+      });
+    }
+  }
+
+  void _clearForm() {
+    _nameController.clear();
+    _ageController.clear();
+    _editingId = null;
+    _nameError = null;
+    _ageError = null;
+  }
+
+  void _onEdit(Map<String, dynamic> row) {
+    if (_isBusy) return;
+    final id = row[DatabaseHelper.columnId] as int;
+    if (!mounted) return;
+    setState(() {
+      _editingId = id;
+      _nameController.text = (row[DatabaseHelper.columnName] ?? '').toString();
+      _ageController.text = (row[DatabaseHelper.columnAge] ?? '').toString();
+      _nameError = null;
+      _ageError = null;
+      _feedback = 'Editing ID $id. Save applies, Cancel discards.';
+    });
+  }
+
+  void _onCancelEdit() {
+    if (_isBusy) return;
+    if (!mounted) return;
+    setState(() {
+      // Cancel writes nothing.
+      _clearForm();
+      _feedback = 'Edit cancelled; nothing was written.';
+    });
+  }
+
+  Future<void> _onDelete(Map<String, dynamic> row) async {
+    if (_isBusy) return;
+    final id = row[DatabaseHelper.columnId] as int;
+    final name = (row[DatabaseHelper.columnName] ?? '').toString();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete guest?'),
+        content: Text('Delete ID $id ($name)? This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    // Cancel writes nothing.
+    if (confirmed != true) {
+      if (!mounted) return;
+      setState(() {
+        _feedback = 'Deletion cancelled; nothing was deleted.';
+      });
+      return;
+    }
+    if (!mounted) return;
+    setState(() {
+      _busy = true;
+      _feedback = null;
+    });
+    try {
+      final deleted = await widget.helper.delete(id);
+      if (deleted == 0) {
+        if (!mounted) return;
+        setState(() {
+          _feedback = 'ID $id was already gone (0 rows deleted). Reloading.';
+        });
+        await _reloadAfterWrite(successMessage: null, notFound: true);
+        return;
+      }
+      await _reloadAfterWrite(
+        successMessage: 'Deleted ID $id (1 row).',
+        clearForm: _editingId == id,
+      );
+      // If the deleted row was being edited, the edit selection is cleared.
+      if (_editingId == id && mounted) {
+        setState(() {
+          _editingId = null;
+        });
+      }
+    } catch (error, stackTrace) {
+      debugPrint('Delete failed: $error\n$stackTrace');
+      if (!mounted) return;
+      setState(() {
+        _feedback = 'Delete failed. Check the logs and try again.';
+      });
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        title: const Text('Fall Festival Roster'),
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
+      body: Padding(
+        padding: const EdgeInsets.all(16),
         child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: .center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+            TextField(
+              controller: _nameController,
+              enabled: !_isBusy,
+              textInputAction: TextInputAction.next,
+              decoration: InputDecoration(
+                labelText: 'Guest name',
+                hintText: 'e.g. River',
+                errorText: _nameError,
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _ageController,
+              enabled: !_isBusy,
+              keyboardType: TextInputType.number,
+              textInputAction: TextInputAction.done,
+              decoration: InputDecoration(
+                labelText: 'Guest age (0–130)',
+                hintText: 'e.g. 21',
+                errorText: _ageError,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ElevatedButton(
+                  onPressed: _isBusy ? null : _onSave,
+                  child: Text(_isEditing ? 'Save' : 'Add'),
+                ),
+                OutlinedButton(
+                  onPressed:
+                      (_isEditing && !_isBusy) ? _onCancelEdit : null,
+                  child: const Text('Cancel edit'),
+                ),
+                OutlinedButton(
+                  onPressed: _isBusy ? null : _loadRows,
+                  child: const Text('Refresh'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text('Records: $_count'),
+            if (_feedback != null) ...[
+              const SizedBox(height: 4),
+              Text(_feedback!),
+            ],
+            const SizedBox(height: 8),
+            Expanded(
+              child: _buildList(),
             ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ),
+    );
+  }
+
+  Widget _buildList() {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_readError != null) {
+      return Center(
+        child: Text(_readError!),
+      );
+    }
+    if (_rows.isEmpty) {
+      return const Center(
+        child: Text(
+          'No festival guests yet — the cider stand is waiting for its first guest!',
+          textAlign: TextAlign.center,
+        ),
+      );
+    }
+    return ListView.builder(
+      itemCount: _rows.length,
+      itemBuilder: (context, index) {
+        final row = _rows[index];
+        final id = row[DatabaseHelper.columnId];
+        final name = (row[DatabaseHelper.columnName] ?? '').toString();
+        final age = row[DatabaseHelper.columnAge];
+        return ListTile(
+          title: Text(name),
+          subtitle: Text('ID: $id • Age: $age'),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                tooltip: 'Edit',
+                icon: const Icon(Icons.edit),
+                onPressed: _isBusy ? null : () => _onEdit(row),
+              ),
+              IconButton(
+                tooltip: 'Delete',
+                icon: const Icon(Icons.delete),
+                onPressed: _isBusy ? null : () => _onDelete(row),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
