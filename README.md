@@ -40,7 +40,7 @@ same database. The Guests tab is Part I. The Folders tab is new.
   spaces-only titles/names are rejected. Duplicate folder names show an error.
   `replace` is never used since it could wipe a folder's cards.
 
-- **Images.** `image_ref` is optional. Empty shows a suit symbol (♥ ♦ ♣ ♠).
+- **Images.** `image_ref` is optional. Empty shows a suit symbol.
   URLs load with `Image.network`, others try `Image.asset`; both fall back to
   the symbol on error. A reference is not the image itself — a good query does
   not mean the file or link still works. No picker (optional per spec).
@@ -71,12 +71,6 @@ Rubric map: schema → `database_helper.dart` + T1; models/CRUD → models + hel
 Analyzer: `dart analyze lib` → No issues found (`evidence/analysis_output.txt`). Plain `flutter analyze` needs Windows Developer Mode, so `dart analyze` is recorded.
 
 Known limitations: T1b, T5, T6 invalid attempts, and Folders-after-restart shot are still open. Fixed after shots: "Updated card ID null" now shows the real id — needs one re-test.
-
-## Submission (upload all three to iCollege)
-
-- `github_link.txt` with this repo URL.
-- `Activity09_Lastname_Firstname.apk` from `flutter build apk --release`, tested on a spare target.
-- `Lastname_Firstname_CriticalThinking.docx` with name, ID, pathway, prompts 1–3 + two U answers (grads: 1–4 + two G answers), evidence refs, AI disclosure.
 
 ## Attribution
 
